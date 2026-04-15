@@ -3,6 +3,7 @@ import { agent, RecentViewType } from '../lib/agent';
 import { findNearestStops } from '../lib/transit/nearbyStops';
 import { gtfsCache } from '../cache/gtfsCache';
 import { AGENCY_NAMES } from '../lib/transit/types';
+import { sendTypingIndicator } from '../lib/typing';
 
 // Handle location sharing
 export async function handleLocation(
@@ -12,6 +13,8 @@ export async function handleLocation(
   res: Response,
 ): Promise<Response> {
   try {
+    sendTypingIndicator(from);
+
     // Check if this is for a pending route search
     const pendingRouteQuery = agent.getPendingRouteSearch(from);
 
@@ -19,9 +22,9 @@ export async function handleLocation(
       // Find the route
       const route = gtfsCache.findRoute(pendingRouteQuery);
       if (!route) {
-        console.error('[Varoom]: Route not found', pendingRouteQuery);
+        console.error('[Apex Transit]: Route not found', pendingRouteQuery);
         await agent.sendMessage(from, `Route ${pendingRouteQuery.toUpperCase()} not found.`);
-        return res.status(200).json({ message: 'Route not found' });
+        return res.status(404).json({ message: 'Route not found' });
       }
 
       // Get all stops within 2 miles (no max limit - filter by radius only)
@@ -34,9 +37,9 @@ export async function handleLocation(
 
       // Check if agency is supported
       if (!AGENCY_NAMES[route.agency_id]) {
-        console.error('[Varoom]: Unsupported agency', route.agency_id);
+        console.error('[Apex Transit]: Unsupported agency', route.agency_id);
         await agent.sendMessage(from, `Agency "${route.agency_id}" is not supported.`);
-        return res.status(200).json({ message: 'Unsupported agency' });
+        return res.status(501).json({ message: 'Unsupported agency' });
       }
 
       // Take top 3 closest stops
@@ -64,7 +67,7 @@ export async function handleLocation(
 
     return res.status(200).json({ message: 'Closest stops sent.' });
   } catch (error) {
-    console.error('[Varoom]: Failed to process location', error);
+    console.error('[Apex Transit]: Failed to process location', error);
     return res.status(500).json({
       error: 'Failed to process location',
       message: error instanceof Error ? error.message : 'Unknown error',

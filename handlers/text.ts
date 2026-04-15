@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { agent } from '../lib/agent';
 import { getStopArrivals } from '../lib/transit/arrivals';
 import { gtfsCache } from '../cache/gtfsCache';
+import { sendTypingIndicator } from '../lib/typing';
 
 // Helper function to send format error message
 async function sendFormatError(from: string, message: string) {
@@ -67,6 +68,7 @@ export async function handleTextMessage(
           return res.status(200).json({ message: 'Stop found but no agency info' });
         }
 
+        sendTypingIndicator(from);
         const arrivals = await getStopArrivals(matchedStop.stopId, matchedStop.agency);
 
         await agent.showStopArrivals(from, matchedStop.stopId, arrivals, matchedStop.agency);
@@ -81,7 +83,7 @@ export async function handleTextMessage(
     await sendFormatError(from, trimmedText);
     return res.status(200).json({ message: 'Invalid format' });
   } catch (error) {
-    console.error('[Varoom]: Failed to process text message', error);
+    console.error('[Apex Transit]: Failed to process text message', error);
     return res.status(500).json({
       error: 'Failed to process text message',
       message: error instanceof Error ? error.message : 'Unknown error',

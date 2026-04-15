@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
-import varoomRouter from './router';
+import apexTransitRouter from './router';
 import { Server } from 'http';
 import { gtfsCache } from './cache/gtfsCache';
 
@@ -10,7 +10,7 @@ const terminationGracePeriodMs = 30000;
 let isShuttingDown = false;
 
 app.use(express.json());
-app.use('/webhook', varoomRouter);
+app.use('/webhook', apexTransitRouter);
 
 async function startServer(): Promise<Server> {
   try {

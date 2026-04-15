@@ -39,17 +39,7 @@ export async function findNearestStops(
       const response = await fetch(monitoringUrl);
 
       if (response.ok) {
-        const data: {
-          ServiceDelivery: {
-            StopMonitoringDelivery: {
-              MonitoredStopVisit: {
-                MonitoredVehicleJourney: {
-                  PublishedLineName: string;
-                };
-              };
-            };
-          };
-        } = (await response.json()) as {
+        const data = (await response.json()) as {
           ServiceDelivery: {
             StopMonitoringDelivery: {
               MonitoredStopVisit: {

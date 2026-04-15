@@ -1,29 +1,58 @@
 import { rcsClient } from './rcsClient';
-import { PinnacleClient } from 'rcs-js';
-
-if (!process.env.PINNACLE_AGENT_ID) {
-  throw new Error('PINNACLE_AGENT_ID environment variable is required');
-}
+import { Pinnacle } from 'rcs-js';
+import { sendTypingIndicator } from './typing';
 
 export class BaseAgent {
-  protected readonly client: PinnacleClient;
-  protected readonly agentName: string;
-  protected readonly TEST_MODE: boolean;
+  protected readonly agentName: string =
+    process.env.AGENT_NAME ?? process.env.PINNACLE_AGENT_ID!;
+  protected readonly client = rcsClient;
+  protected readonly TEST_MODE = process.env.TEST_MODE === 'true';
 
-  constructor() {
-    this.client = rcsClient;
-    this.agentName = process.env.PINNACLE_AGENT_ID!;
-    this.TEST_MODE = process.env.TEST_MODE === 'true';
+  protected showTyping(to: string): void {
+    sendTypingIndicator(to);
   }
 
-  // Send strict format message (for errors)
-  async sendStrictFormatMessage(to: string, text: string) {
+  /**
+   * Send a simple text message. Caller is responsible for supplying any
+   * quick replies — there is no implicit Main Menu / End Demo injected
+   * here. If a method needs escape navigation, pass it explicitly.
+   */
+  async sendMessage(to: string, text: string, quickReplies: Pinnacle.RichButton[] = []) {
     return await this.client.messages.rcs.send({
       from: this.agentName,
-      to: to,
+      to,
       text,
-      quickReplies: [],
-      options: { test_mode: this.TEST_MODE },
+      quickReplies,
+    });
+  }
+
+  async sendButtonOnlyMessage(to: string) {
+    return await this.client.messages.rcs.send({
+      from: this.agentName,
+      to,
+      text: 'This agent does not process text messages. Please use the buttons provided to interact.',
+      quickReplies: [
+        {
+          type: 'trigger',
+          title: '🏠 Main Menu',
+          payload: JSON.stringify({ action: 'showMainMenu' }),
+        },
+      ],
+    });
+  }
+
+  async sendStrictFormatMessage(to: string, formatInstructions: string) {
+    return await this.client.messages.rcs.send({
+      from: this.agentName,
+      to,
+      text: formatInstructions,
+      quickReplies: [
+        {
+          type: 'trigger',
+          title: '🏠 Main Menu',
+          payload: JSON.stringify({ action: 'showMainMenu' }),
+        },
+      ],
     });
   }
 }

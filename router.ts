@@ -1,14 +1,16 @@
 import { Router, Request, Response } from 'express';
-import { handleButtonClick, handleTextMessage, handleLocation } from './handlers';
 import { rcsClient } from './lib/rcsClient';
+import { handleButtonClick, handleTextMessage, handleLocation } from './handlers';
+import { sendTypingIndicator } from './lib/typing';
 
-const varoomRouter = Router();
+const apexTransitRouter = Router();
 
-varoomRouter.post('/', async (req: Request, res: Response) => {
+apexTransitRouter.post('/', async (req: Request, res: Response) => {
   try {
     const messageEvent = await rcsClient.messages.process(req);
-    if (!('message' in messageEvent)) {
-      return res.status(200).json({ message: 'No message found' });
+    if (messageEvent.type !== 'MESSAGE.RECEIVED') {
+      console.error('[Apex Transit]: User event received', messageEvent);
+      return res.status(200).json({ message: 'User event received' });
     }
     const message = messageEvent.message;
     const from = messageEvent.conversation.from;
@@ -22,24 +24,32 @@ varoomRouter.post('/', async (req: Request, res: Response) => {
 
       // Handle trigger buttons
       if (message.button.raw.type === 'trigger') {
+        sendTypingIndicator(from);
         return handleButtonClick(from, message.button.raw.payload ?? '', res);
       }
     }
 
     // Handle location sharing
     if (message.type === 'RCS_LOCATION_DATA') {
+      sendTypingIndicator(from);
       const { latitude, longitude } = message.data;
       return handleLocation(from, latitude, longitude, res);
     }
 
     // Handle text messages
     if (message.type === 'RCS_TEXT') {
+      sendTypingIndicator(from);
       return handleTextMessage(from, message.text, res);
     }
 
-    return res.status(200).json({ message: 'No message found' });
+    // Unknown message type
+    console.error('[Apex Transit]: Unknown message type', message);
+    return res.status(400).json({
+      error: 'Unknown message type',
+      received: message,
+    });
   } catch (error) {
-    console.error('[Varoom]: Internal server error', error);
+    console.error('[Apex Transit]: Internal server error', error);
     return res.status(500).json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -47,4 +57,4 @@ varoomRouter.post('/', async (req: Request, res: Response) => {
   }
 });
 
-export default varoomRouter;
+export default apexTransitRouter;

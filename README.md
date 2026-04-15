@@ -1,196 +1,134 @@
-# Transit Assistant
+# Apex Transit — RCS Bay Area Transit Chatbot
 
-A Bay Area transit RCS chatbot that provides real-time transit information for all major Bay Area transit agencies through Rich Communication Services (RCS) messaging.
+A Bay Area transit chatbot that runs over RCS. Riders share their location through RCS, see the closest stops across BART, Muni, AC Transit, Caltrain, Golden Gate Transit, and other 511.org agencies, then pull real-time arrivals — all from inside the messages app.
+
+> **Live guide:** https://pinnacle.sh/samples/apex-transit
 
 https://github.com/user-attachments/assets/074fb330-293a-4e9d-af82-c8757de56f92
 
-## Features
+> Note: the visuals in this demo recording have since been refreshed with sharper brand assets. The conversation flow is identical to what you'll get from a fresh clone.
 
-### Stop Arrivals
+## What's inside
 
-- Get real-time arrival times for any transit stop
-- Type `stop [id]` to view arrivals
-- Live departure countdown
+- Find nearby stops by sharing location through RCS
+- Real-time arrivals from the 511.org StopMonitoring API
+- Coverage across BART, Muni, AC Transit, Caltrain, Golden Gate Transit, and more
+- Local SQLite GTFS database for nearby-stop lookup
+- Per-rider recently-viewed stops and routes
 
-### Route Search
-
-- Find the nearest stops for a route
-- Type `route [name]` and share your location
-- View stop details and distances
-
-### Nearby Stops
-
-- Share your location to discover transit stops near you
-- See all nearby stops across agencies
-- Quick access to arrival times
-
-### Live Vehicle Tracking
-
-- See real-time vehicle positions on maps
-- Supported for select routes
-
-### Recent Views
-
-- Quick access to recently viewed stops and routes
-- Convenient navigation history
-
-### Multi-Agency Support
-
-- **SF**: San Francisco Municipal Transportation Agency (Muni)
-- **AC**: AC Transit
-- **BA**: Bay Area Rapid Transit (BART)
-- **CM**: Caltrain
-- **GG**: Golden Gate Transit
-- **SC**: SamTrans
-- **VT**: Santa Clara Valley Transportation Authority (VTA)
-
-## Project Structure
-
-```
-Transit-Assistant/
-├── lib/
-│   ├── rcsClient.ts          # Pinnacle RCS client configuration
-│   ├── baseAgent.ts          # Base agent class with common functionality
-│   ├── agent.ts              # Transit agent implementation
-│   └── transit/
-│       ├── arrivals.ts       # Fetch real-time arrival data
-│       ├── nearbyStops.ts    # Find stops near a location
-│       ├── util.ts           # 511 API integration utilities
-│       └── types.ts          # Transit-specific types
-├── handlers/
-│   ├── index.ts              # Handler exports
-│   ├── text.ts               # Text message handler
-│   ├── button.ts             # Button click handler
-│   └── location.ts           # Location sharing handler
-├── cache/
-│   ├── gtfsCache.ts          # GTFS data caching
-│   ├── import-gtfs.ts        # GTFS import utilities
-│   └── schema.sql            # Database schema
-├── server.ts                 # Main Express server
-├── router.ts                 # Express router for webhook handling
-├── update-db.sh              # Database update script
-├── package.json              # Project dependencies
-├── tsconfig.json             # TypeScript configuration
-├── .env.example              # Environment variables template
-└── .gitignore                # Git ignore rules
-```
-
-## Setup
-
-### Prerequisites
+## Prerequisites
 
 - Node.js 18+
-- A Pinnacle API account
-- RCS agent configured in Pinnacle
-- A 511 API key for Bay Area transit data (get one at [511.org](https://511.org))
-- A Mapbox API key for map visualization (get one at [mapbox.com](https://mapbox.com))
+- A Pinnacle account — [sign up](https://app.pinnacle.sh/auth/sign-up)
+- An RCS [test agent](https://docs.pinnacle.sh/guides/branded-test-agents) for development
+- A Pinnacle [API key](https://app.pinnacle.sh/dashboard/development/api-keys) and [webhook signing secret](https://app.pinnacle.sh/dashboard/development/webhooks)
+- A free 511.org API key — https://511.org/open-data/token
+- Optional: a Mapbox API key for richer geocoding
 
-### Installation
-
-1. Clone the repository
-
-2. Install dependencies:
-
-   ```bash
-   npm install
-   ```
-
-3. Create a `.env` file based on `.env.example`:
-
-   ```bash
-   cp .env.example .env
-   ```
-
-4. Configure your environment variables in `.env`:
-
-```env
-PINNACLE_API_KEY=your_api_key_here
-PINNACLE_AGENT_ID=your_agent_id_here
-PINNACLE_SIGNING_SECRET=your_signing_secret_here
-API_511_KEY=your_511_api_key_here
-MAPBOX_API_KEY=your_mapbox_api_key_here
-TEST_MODE=false
-PORT=3000
-```
-
-5. Download and import GTFS data:
-
-   ```bash
-   npm run update-db
-   ```
-
-6. Set up a public HTTPS URL for your webhook. For local development, you can use a tunneling service like [ngrok](https://ngrok.com):
-
-   ```bash
-   ngrok http 3000
-   ```
-
-   For production, deploy to your preferred hosting provider.
-
-7. Connect your webhook to your RCS agent:
-
-   - Go to the [Pinnacle Webhooks Dashboard](https://app.pinnacle.sh/dashboard/development/webhooks)
-   - Add your public URL with the `/webhook` path (e.g., `https://your-domain.com/webhook`)
-   - Select your RCS agent to receive messages at this endpoint
-   - Copy the signing secret and add it to your `.env` file as `PINNACLE_SIGNING_SECRET`. The `process()` method uses this environment variable to verify the request signature.
-
-8. Text "MENU" to the bot to see the main menu.
-
-### Running the Application
-
-Development mode with auto-reload:
+## Quick start
 
 ```bash
+git clone https://github.com/pinnacle-samples/Apex-Transit
+cd Apex-Transit
+npm install
+cp .env.example .env
+# fill in PINNACLE_*, API_511_KEY, MAPBOX_API_KEY (optional)
+
+# Import the GTFS database (one-time, slow)
+npm run update-db
+
 npm run dev
 ```
 
-Production mode:
+Expose your webhook with [ngrok](https://ngrok.com):
 
 ```bash
-npm start
+ngrok http 3000
 ```
 
-## Configuration
+Then in the [Pinnacle Webhooks dashboard](https://app.pinnacle.sh/dashboard/development/webhooks):
 
-### Environment Variables
+1. Add `https://<your-tunnel-domain>/webhook`
+2. Attach it to your RCS agent
+3. Copy the signing secret into `PINNACLE_SIGNING_SECRET`
 
-| Variable                  | Description                                                            | Required            |
-| ------------------------- | ---------------------------------------------------------------------- | ------------------- |
-| `PINNACLE_API_KEY`        | Your Pinnacle API key                                                  | Yes                 |
-| `PINNACLE_AGENT_ID`       | Your RCS agent ID from Pinnacle Dashboard                              | Yes                 |
-| `PINNACLE_SIGNING_SECRET` | Webhook signing secret for verification                                | Yes                 |
-| `API_511_KEY`             | Your 511.org API key                                                   | Yes                 |
-| `MAPBOX_API_KEY`          | Your Mapbox API key                                                    | Yes                 |
-| `TEST_MODE`               | Set to `true` for sending with a test RCS agent to whitelisted numbers | No (default: false) |
-| `PORT`                    | Server port                                                            | No (default: 3000)  |
+Send `MENU` or `START` to your agent — you'll see Apex Transit's main menu with **Stops Near Me**, **Recently Viewed**, and **Help**. Tap **Stops Near Me** and share your location to see live arrivals.
 
-## How to Use the Chatbot
+## Environment variables
 
-- Type `MENU` or `START` to see the main menu
-- Type `stop [id]` to view arrival times (e.g., `stop 12345`)
-- Type `route [name]` to find nearest stops for a route (e.g., `route 38`)
-- Click "Stops Near Me" and share your location to find nearby transit stops
-- Click "Recently Viewed" to see your recent searches
-- Click "Help" for more information
+```env
+PINNACLE_API_KEY=your_pinnacle_api_key_here
+PINNACLE_AGENT_ID=your_agent_id_here
+PINNACLE_SIGNING_SECRET=your_pinnacle_signing_secret_here
+TEST_MODE=false
+PORT=3000
 
-## Technologies
+# 511.org Open Data — required for real-time arrivals
+API_511_KEY=your_511_api_key_here
 
-- **TypeScript**: Type-safe development
-- **Express**: Web framework for webhook handling
-- **rcs-js**: Pinnacle RCS SDK v2.0.6+
-- **better-sqlite3**: Local database for GTFS data
-- **tsx**: TypeScript execution and hot-reload
+# Mapbox API key — used for richer geocoding (optional)
+MAPBOX_API_KEY=your_mapbox_api_key_here
+```
 
-## Support
+## Project structure
 
-For issues related to:
+```
+Apex-Transit/
+├── server.ts                   # Express bootstrap
+├── router.ts                   # /webhook POST — dispatches by message type
+├── update-db.sh                # GTFS importer (also runnable via `npm run update-db`)
+├── handlers/
+│   ├── index.ts                # Re-exports the three handlers below
+│   ├── button.ts               # Trigger button handler
+│   ├── location.ts             # Location-share handler
+│   └── text.ts                 # Free-form text handler
+├── cache/
+│   ├── gtfsCache.ts            # SQLite reader
+│   ├── import-gtfs.ts          # GTFS feed → SQLite importer
+│   ├── schema.sql              # Stops / routes / agencies tables
+│   └── gtfs.db                 # Generated SQLite DB (after import)
+└── lib/
+    ├── rcsClient.ts            # PinnacleClient instance
+    ├── baseAgent.ts            # Shared send + typing helpers
+    ├── typing.ts               # Fire-and-forget typing indicator
+    ├── agent.ts                # Agent — recently viewed state + presentation
+    └── transit/
+        ├── arrivals.ts         # 511.org StopMonitoring fetcher
+        ├── nearbyStops.ts      # Geo lookup over GTFS DB
+        ├── types.ts            # ArrivalInfo, StopData, AGENCY_NAMES
+        └── util.ts             # Distance, formatting helpers
+```
 
-- RCS functionality: Contact Pinnacle support
-- Chatbot implementation: Refer to the code documentation
-- Configuration: Check the `.env.example` file
+## Routing by message type
+
+Unlike the other samples, `router.ts` doesn't switch on a trigger action — it dispatches by RCS message type:
+
+- `RCS_BUTTON_DATA` (trigger) → `handleButtonClick`
+- `RCS_LOCATION_DATA` → `handleLocation`
+- `RCS_TEXT` → `handleTextMessage`
+
+This makes location sharing a first-class flow rather than a special case inside a giant switch statement.
+
+## How nearby-stop lookup works
+
+When a user shares their location, `handlers/location.ts` calls `findNearestStops(lat, lng)` which runs a haversine query over the SQLite stops table. For each result, it calls the 511.org StopMonitoring API to fetch the routes that actually serve that stop right now (instead of all routes that *could* serve it).
+
+The result is a small set of cards with current arrivals — usually 3 to 5 stops, ranked by walking distance.
+
+## Customize coverage
+
+`AGENCY_NAMES` in `lib/transit/types.ts` is the allowlist of supported agencies. Add a new agency, re-run `npm run update-db`, and the next location share picks it up.
+
+## Going to production
+
+- Set `TEST_MODE=false` and submit your agent for [carrier approval](https://docs.pinnacle.sh/guides/campaigns/rcs)
+- Move `gtfs.db` to a managed Postgres or MySQL instance with PostGIS for a real geo index
+- Schedule `npm run update-db` as a nightly cron so the stop catalog stays fresh
+- Add proactive arrival alerts by storing favorite stops per rider and pushing updates from a worker
 
 ## Resources
 
-- **Dashboard**: Visit [Pinnacle Dashboard](https://app.pinnacle.sh)
-- **Documentation**: Visit [Pinnacle Documentation](https://docs.pinnacle.sh)
-- **Support**: Email [founders@trypinnacle.app](mailto:founders@trypinnacle.app)
+- **Live guide:** https://pinnacle.sh/samples/apex-transit
+- **Pinnacle docs:** https://docs.pinnacle.sh/documentation/introduction
+- **511.org open data:** https://511.org/open-data
+- **Support:** founders@trypinnacle.app

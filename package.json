@@ -1,5 +1,5 @@
 {
-  "name": "transit-assistant",
+  "name": "apex-transit",
   "version": "1.0.0",
   "description": "Bay Area Transit Assistant chatbot using Pinnacle RCS",
   "type": "module",
@@ -23,7 +23,7 @@
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "gtfs-realtime-bindings": "^1.1.0",
-    "rcs-js": "^2.0.6"
+    "rcs-js": "^2.0.15"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.8",

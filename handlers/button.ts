@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { agent, RecentViewType } from '../lib/agent';
 import { getStopArrivals } from '../lib/transit/arrivals';
 import { ArrivalInfo } from '../lib/transit/types';
+import { sendTypingIndicator } from '../lib/typing';
 
 interface ButtonPayload {
   action: string;
@@ -25,6 +26,10 @@ export async function handleButtonClick(
     }
 
     switch (payload.action) {
+      case 'showMainMenu':
+        await agent.showMainMenu(from);
+        break;
+
       case 'search_near_me':
         await agent.requestLocation(from);
         break;
@@ -47,6 +52,7 @@ export async function handleButtonClick(
 
       case 'show_stop_arrivals':
         if (payload.agency && payload.stopId) {
+          sendTypingIndicator(from);
           const arrivals = await getStopArrivals(payload.stopId, payload.agency);
           const arrivalInfo: ArrivalInfo[] = arrivals;
 
@@ -66,7 +72,7 @@ export async function handleButtonClick(
 
     return res.status(200).json({ message: 'Button action handled' });
   } catch (error) {
-    console.error('[Varoom]: Failed to process button click', error);
+    console.error('[Apex Transit]: Failed to process button click', error);
     return res.status(500).json({
       error: 'Failed to process button click',
       message: error instanceof Error ? error.message : 'Unknown error',

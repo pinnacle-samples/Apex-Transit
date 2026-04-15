@@ -71,7 +71,7 @@ export class Agent extends BaseAgent {
     this.pendingRouteSearches.delete(userId);
   }
 
-  // Standard quick reply buttons
+  // Standard quick reply buttons (feature actions)
   private readonly standardQuickReplies = [
     {
       type: 'trigger' as const,
@@ -90,11 +90,28 @@ export class Agent extends BaseAgent {
     },
   ];
 
-  // Generate map image URL with vehicle marker using Mapbox
+  // Navigation buttons appended to every non-main-menu screen so users can
+  // always escape back to the main menu or end the demo.
+  private readonly navigationQuickReplies = [
+    {
+      type: 'trigger' as const,
+      title: '🏠 Main Menu',
+      payload: JSON.stringify({ action: 'showMainMenu' }),
+    },
+    {
+      type: 'trigger' as const,
+      title: '🔚 End Demo',
+      payload: 'END_DEMO',
+    },
+  ];
+
+  // Generate map image URL with vehicle marker using Mapbox.
+  // Sized to 960x720 to match the 4:3 RBM card spec and the no-tracking
+  // placeholder so cards don't reflow when toggling between them.
   private getMapUrl(lat: number, lon: number): string {
-    const zoom = 14;
-    const width = 400;
-    const height = 300;
+    const zoom = 18;
+    const width = 960;
+    const height = 720;
     const mapboxToken = process.env.MAPBOX_API_KEY;
 
     // Mapbox Static Images API: pin-s (small pin) + ff0000 (red color)
@@ -111,7 +128,6 @@ export class Agent extends BaseAgent {
         to: to,
         text: `No upcoming arrivals found for Stop ${stopId} (${agencyName}).`,
         quickReplies: this.standardQuickReplies,
-        options: { test_mode: this.TEST_MODE },
       });
     }
 
@@ -138,7 +154,8 @@ export class Agent extends BaseAgent {
 
     const etaCards = uniqueRoutes.map((arrival) => {
       // Get map URL if vehicle position is available
-      let mediaUrl = process.env.NO_TRACKING_IMAGE_URL || '';
+      let mediaUrl =
+        'https://server.trypinnacle.app/storage/v1/object/public/pinnacle-public-assets/ARC/apex-transit/no-tracking.png';
       if (arrival.vehicleLat && arrival.vehicleLon) {
         mediaUrl = this.getMapUrl(arrival.vehicleLat, arrival.vehicleLon);
       }
@@ -149,7 +166,7 @@ export class Agent extends BaseAgent {
       if (arrival.vehicleLat && arrival.vehicleLon) {
         buttons.push({
           type: 'sendLocation',
-          title: '📍 Show Vehicle Location',
+          title: 'Show Vehicle Location',
           latLong: {
             lat: arrival.vehicleLat,
             lng: arrival.vehicleLon,
@@ -169,8 +186,7 @@ export class Agent extends BaseAgent {
       from: this.agentName,
       to: to,
       cards: etaCards,
-      quickReplies: [],
-      options: { test_mode: this.TEST_MODE },
+      quickReplies: [...this.navigationQuickReplies],
     });
   }
 
@@ -187,7 +203,7 @@ export class Agent extends BaseAgent {
       quickReplies: [
         {
           type: 'requestUserLocation',
-          title: '📍 Share Location',
+          title: 'Share Location',
         },
         {
           type: 'trigger' as const,
@@ -195,7 +211,6 @@ export class Agent extends BaseAgent {
           payload: JSON.stringify({ action: 'help' }),
         },
       ],
-      options: { test_mode: this.TEST_MODE },
     });
   }
 
@@ -208,8 +223,7 @@ export class Agent extends BaseAgent {
         from: this.agentName,
         to: to,
         text: "You haven't viewed any stops yet. Try searching for a route or nearby stops.",
-        quickReplies: this.standardQuickReplies,
-        options: { test_mode: this.TEST_MODE },
+        quickReplies: [...this.standardQuickReplies, ...this.navigationQuickReplies],
       });
     }
 
@@ -244,8 +258,7 @@ export class Agent extends BaseAgent {
       from: this.agentName,
       to: to,
       text: 'Here are your most recently viewed routes and stops',
-      quickReplies,
-      options: { test_mode: this.TEST_MODE },
+      quickReplies: [...quickReplies, ...this.navigationQuickReplies],
     });
   }
 
@@ -273,7 +286,7 @@ export class Agent extends BaseAgent {
       if (stop.lat && stop.lon) {
         buttons.unshift({
           type: 'sendLocation',
-          title: '📍 Get Directions',
+          title: 'Get Directions',
           latLong: {
             lat: stop.lat,
             lng: stop.lon,
@@ -316,8 +329,8 @@ export class Agent extends BaseAgent {
           title: '❓ Help',
           payload: JSON.stringify({ action: 'help' }),
         },
+        ...this.navigationQuickReplies,
       ],
-      options: { test_mode: this.TEST_MODE },
     });
   }
 
@@ -328,21 +341,21 @@ export class Agent extends BaseAgent {
       to: to,
       cards: [
         {
-          title: 'Get live transit arrivals for all Bay Area transit agencies.',
-          subtitle: 'Type a route or stop number to get started!',
-          media: process.env.VAROOM_IMAGE_URL || '',
+          title: 'Apex Transit',
+          subtitle: 'Live arrivals across every Bay Area transit agency. Type a route or stop to begin.',
+          media:
+            'https://server.trypinnacle.app/storage/v1/object/public/pinnacle-public-assets/ARC/apex-transit/logo.png',
           buttons: [],
         },
       ],
       quickReplies: [
+        ...this.standardQuickReplies,
         {
           type: 'trigger',
           title: '🔚 End Demo',
           payload: 'END_DEMO',
         },
-        ...this.standardQuickReplies,
       ],
-      options: { test_mode: this.TEST_MODE },
     });
   }
 
@@ -352,8 +365,7 @@ export class Agent extends BaseAgent {
       from: this.agentName,
       to: to,
       text,
-      quickReplies: this.standardQuickReplies,
-      options: { test_mode: this.TEST_MODE },
+      quickReplies: [...this.standardQuickReplies, ...this.navigationQuickReplies],
     });
   }
 
@@ -374,8 +386,8 @@ export class Agent extends BaseAgent {
           title: '🕒 Recently Viewed',
           payload: JSON.stringify({ action: 'recently_viewed' }),
         },
+        ...this.navigationQuickReplies,
       ],
-      options: { test_mode: this.TEST_MODE },
     });
   }
 }
